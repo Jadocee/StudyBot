@@ -1,225 +1,232 @@
 package jAcee12.wipbot;
 
-import com.jagrosh.jdautilities.commons.waiter.*;
-import jAcee12.wipbot.university.Degree;
+
+import jAcee12.wipbot.configuration.BotCommand;
+import jAcee12.wipbot.configuration.Configuration;
 import jAcee12.wipbot.university.University;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
-import net.dv8tion.jda.api.entities.Activity;
-import net.dv8tion.jda.api.entities.Guild;
-import net.dv8tion.jda.api.entities.Role;
+import net.dv8tion.jda.api.OnlineStatus;
+import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.ReadyEvent;
-import net.dv8tion.jda.api.events.ShutdownEvent;
-import net.dv8tion.jda.api.events.guild.GuildJoinEvent;
-import net.dv8tion.jda.api.events.guild.member.GuildMemberRoleAddEvent;
 import net.dv8tion.jda.api.events.interaction.SlashCommandEvent;
 import net.dv8tion.jda.api.events.role.RoleCreateEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import net.dv8tion.jda.api.interactions.commands.Command;
-import net.dv8tion.jda.api.interactions.commands.build.CommandData;
-import net.dv8tion.jda.api.interactions.commands.build.OptionData;
-import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
 import net.dv8tion.jda.api.requests.GatewayIntent;
-import net.dv8tion.jda.api.requests.restaction.RoleAction;
+import net.dv8tion.jda.api.requests.restaction.ChannelAction;
 import org.jetbrains.annotations.NotNull;
 
 import javax.security.auth.login.LoginException;
-import java.awt.List;
 import java.time.format.DateTimeFormatter;
-import java.time.LocalDateTime;
-import java.awt.*;
 import java.util.*;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 
-import static net.dv8tion.jda.api.interactions.commands.OptionType.*;
+public class Bot extends ListenerAdapter {
+    private final University university;
+    private JDA jda;
 
-public class Bot extends ListenerAdapter{
-    private final ArrayList<University> universities = new ArrayList<University>();
-    private final EventWaiter eventWaiter = new EventWaiter();
-    private HashMap<Role, List> permissions;
+    public Bot() {
+        this.university = new University("University of Newcastle", "UON");
+    }
 
-   /* private Bot() {
-        this.universities = new ArrayList<University>();
-    }*/
 
     public static void main(String[] args) {
         try {
             if (args.length < 1) {
                 throw new Exception("You have to provide a token as first argument!");
+                // args[0] should be the token
+                // We don't need any intents for this bot. Slash commands work without any intents!
+            } else {
+                new Bot().start(args[0]);
+
             }
-            // args[0] should be the token
-            // We don't need any intents for this bot. Slash commands work without any intents!
-            new Bot().start(args[0]);
 
         } catch (Exception e) {
-            System.out.println(e.getMessage());
+            e.printStackTrace();
             System.exit(1);
         }
     }
 
-    private void start(String token) throws LoginException, InterruptedException {
+    private void start(String token) throws InterruptedException, LoginException {
         System.out.println("Building JDA...");
-        JDA jda = JDABuilder.createLight(token, EnumSet.noneOf(GatewayIntent.class)) // slash commands don't need any intents
+       this.jda = JDABuilder.createLight(token, EnumSet.noneOf(GatewayIntent.class)) // slash commands don't need any intents
                 .addEventListeners(
                         this,
-                        eventWaiter
+                        new SlashCommandHandler(this.university)
                 )
-                .setActivity(Activity.listening("stuff"))
+                .setStatus(OnlineStatus.ONLINE)
+                .setActivity(Activity.competing("in CS:GO"))
                 .build();
         jda.awaitReady();
         jda.updateCommands().queue(); // Clear old commands
         jda.getPresence().setActivity(Activity.watching("tv"));
+
+
     }
 
     @Override
     public void onReady(@NotNull ReadyEvent event) {
-        System.out.println("Done!\n");
-        System.out.println("Registering slash commands...");
-        if (event.getJDA().getGuilds().size() > 0) {
-            for (Guild guild: event.getJDA().getGuilds()) {
-                this.registerCommands(guild);
-            }
-        }
-        System.out.println("Done!\n");
-        System.out.println("Bot is ready!");
+        System.out.println("Bot has finished building!\n");
     }
 
-    private void registerCommands(@NotNull Guild guild) {
-        guild.updateCommands().queue();
-        guild.updateCommands()
-                .addCommands(
-                        new CommandData("course", "University related commands")
-                                .addSubcommands(
-                                        new SubcommandData("create", "Create a new University for users to join!")
-                                                .addOptions(
-                                                        new OptionData(STRING, "name", "Name of the University (e.g. 'University of Discord'", true),
-                                                        new OptionData(STRING, "acronym", "Acronym of the University name (e.g. UoD)", true)
-                                                ),
-                                        new SubcommandData("join", "Join a University (i.e., get a role)")
-                                                .addOptions(
-                                                        new OptionData(ROLE, "name", "Mention of the role of the University to join (e.g. '@UOD'", false)
-                                                ),
-                                        new SubcommandData("add", "Add to a University")
-                                                .addOptions(
-                                                        new OptionData(STRING, "item", "Add item to the University", true)
-                                                                .addChoices(
-                                                                        new Command.Choice("degree", "degree"),
-                                                                        new Command.Choice("course", "course")
-                                                                )
-                                                ),
-                                        new SubcommandData("remove", "Remove a University")
-                                                .addOptions(
-                                                        new OptionData(MENTIONABLE, "role", "Mentioned role for the University", true)
-                                                ),
-                                        new SubcommandData("wipe", "Remove all Universities")
-                                )
-                )
-                .queue();
-    }
-
-    @Override
-    public void onGuildJoin(@NotNull GuildJoinEvent event) {
-        this.registerCommands(event.getGuild());
-    }
 
     @Override
     public void onRoleCreate(@NotNull RoleCreateEvent event) {
-        super.onRoleCreate(event);
+        String roleName = event.getRole().getName();
+
+        System.out.println(
+                "New role \"" + roleName + "\" created @ " +
+                        DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm:ss").format(event.getRole().getTimeCreated())
+        );
+    }
+
+    public static boolean containsCategory(Guild guild, String catName) {
+        for (Category category : guild.getCategories()) {
+            if (category.getName().equals(catName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public static Category findCategory(Guild guild, String catName) {
+        for (Category category : guild.getCategories()) {
+            if (category.getName().equals(catName)) {
+                return category;
+            }
+        }
+        return null;
+    }
+
+    public static TextChannel findTextChannel(Guild guild, String chName) {
+        for (TextChannel channel : guild.getTextChannels()) {
+            if (channel.getName().equalsIgnoreCase(chName)) {
+                return channel;
+            }
+        }
+        return null;
+    }
+
+    public static TextChannel createTextChannel(Guild guild, String channelName) {
+        AtomicBoolean done = new AtomicBoolean(false);
+        AtomicReference<TextChannel> newChannel = new AtomicReference<>();
+        guild.createTextChannel(channelName).queue(channel -> {
+            done.set(true);
+            newChannel.set(channel);
+        });
+        while (!done.get()) {
+            continue;
+        }
+        return newChannel.get();
+    }
+
+    public static boolean hasRole(Guild guild, String rName) {
+        for (Role role : guild.getRoles()) {
+            if (role.getName().equalsIgnoreCase(rName)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void giveRole(SlashCommandEvent event, Role role) {
+        Objects.requireNonNull(event.getGuild()).addRoleToMember(Objects.requireNonNull(event.getMember()), role)
+                .queue(v -> {
+                    event.reply("done")
+                            .setEphemeral(true)
+                            .queue();
+                });
+    }
+
+    public static String capitalise(String[] string) {
+        StringBuilder stringBuilder = new StringBuilder();
+        for (String word : string) {
+            stringBuilder
+                    .append(Character.toUpperCase(word.charAt(0)))
+                    .append(word.substring(1))
+                    .append(" ");
+        }
+        stringBuilder.trimToSize();
+        return stringBuilder.toString();
     }
 
 
 
-    @Override
-    public void onSlashCommand(@NotNull SlashCommandEvent event) {
-        try {
-            // Only accept commands from guilds
-            if (event.isFromGuild()) {
 
-                switch (event.getName()) {
-                    case "uni" -> {
-                        switch (Objects.requireNonNull(event.getSubcommandName())) {
-                            case "create" -> {
-                                String uniName = Objects.requireNonNull(event.getOption("name")).getAsString();
-                                String uniAcr = Objects.requireNonNull(event.getOption("acronym")).getAsString();
-                                Objects.requireNonNull(event.getGuild()).createRole()
-                                        .setName(uniAcr)
-                                        .setMentionable(true)
-                                        .queue(role -> {
-                                            System.out.println(
-                                                    "New role \"" + role.getName() + "\" created @ " +
-                                                    DateTimeFormatter.ofPattern("dd/MM/yyyy HH::mm::ss").format(role.getTimeCreated())
+
+    public static Category createCategory(Guild guild, String catName) {
+        AtomicBoolean done = new AtomicBoolean(false);
+        AtomicReference<Category> newCategory = new AtomicReference<>();
+        guild.createCategory(catName).queue(category -> {
+            done.set(true);
+            newCategory.set(category);
+        });
+        while (!done.get()) {
+            continue;
+        }
+        return newCategory.get();
+    }
+
+    private void addCourse(@NotNull SlashCommandEvent event, String name, String code, Long roleId) throws Exception {
+        //this.moderation.newPerms(roleId);
+        //this.university.addCourse(name, code, roleId);
+
+        var successMsg = event.reply("Yessir, we just added **" + name + "**! 😄" + "\n" +
+                        "You can join this course by using \"/join course " +
+                        Objects.requireNonNull(event.getGuild()).getRoleById(roleId) + "\"")
+                .setEphemeral(true);
+
+
+        // Find
+        if (!containsCategory(Objects.requireNonNull(event.getGuild()), code.substring(0, code.length() / 2))) {
+            event.getGuild().createCategory(code.substring(0, code.length() / 2))
+                    .queue(
+                            category -> {
+                                if (findCategory(Objects.requireNonNull(event.getGuild()), code) == null) {
+
+                                    event.getGuild().createTextChannel(code)
+                                            .setParent(category)
+                                            .queue(channel -> {
+                                                successMsg.queue();
+                                            });
+                                } else {
+
+                                    for (TextChannel channel : event.getGuild().getTextChannels()) {
+
+                                        if (channel.getName().equalsIgnoreCase(code)) {
+                                            channel.getManager().setParent(category).queue(
+                                                    v -> {
+                                                        successMsg.queue();
+                                                    }
                                             );
-                                            this.universities.add(new University(uniName, uniAcr, role));
-                                            event.reply("Yessir, we just added **" + uniName + "**! 😄"
-                                                            + "\n" + "You can join this university by using \"/uni join "
-                                                            + role.getAsMention() + "\"")
-                                                    .setEphemeral(true).queue();
-                                        });
-                                event.getGuild().createCategory(uniName).queue();
-                                // TODO if university exists
-                            }
-                            case "join" -> {
-                                if (event.getOption("name") != null) {
-                                    Role uni = Objects.requireNonNull(event.getOption("name")).getAsRole();
-                                    System.out.println(uni.getAsMention());
-                                    for (University university : this.universities) {
-                                        System.out.println(university.getRole().getAsMention());
-                                        if (university.getRole().getAsMention().equals(uni.getAsMention())) {
-                                            Objects.requireNonNull(event.getGuild())
-                                                    .addRoleToMember(Objects.requireNonNull(event.getMember()).getId(), university.getRole())
-                                                    .queue(v -> {
-                                                        event.reply("You're now a part of " + university.getRole().getAsMention()
-                                                                        + "! 😄")
-                                                                .setEphemeral(true)
-                                                                .queue();
-                                                    });
-
-
-                                            /*if (Objects.requireNonNull(event.getMember()).getRoles().contains(university.getRole())) {
-                                                event.reply("You're now in the " + university.getName() + "! 😄")
-                                                        .setEphemeral(true).queue();
-                                            }*/
                                             break;
                                         }
                                     }
-                                } else {
-                                    EmbedBuilder eb = new EmbedBuilder();
-                                    eb.setTitle("🎓 Universities", null);
-                                    eb.setColor(Color.red);
-                                    eb.setDescription("List of available Universities for you to join");
-                                    for (University k : this.universities) {
-                                        eb.addField(k.getName(), k.getRole().getAsMention(), false);
-                                    }
-                                    eb.setFooter("You can join a university by using \"/uni join @role\"");
-                                    event.replyEmbeds(eb.build()).setEphemeral(true).queue();
                                 }
                             }
+                    );
+        } else {
+            Category category = findCategory(event.getGuild(), code);
 
-                            case "wipe" -> {
-
-                                if (Objects.requireNonNull(event.getMember()).isOwner()) {
-                                    wipeUniversities(event.getGuild());
+            if (findTextChannel(Objects.requireNonNull(event.getGuild()), code) == null) {
+                event.getGuild().createTextChannel(code)
+                        .setParent(category)
+                        .queue(
+                                channel -> {
+                                    successMsg.queue();
                                 }
-                                event.reply("Done").setEphemeral(true).queue();
-                            }
-                        }
+                        );
+            } else {
+                for (TextChannel channel : event.getGuild().getTextChannels()) {
+                    if (channel.getName().equalsIgnoreCase(code)) {
+                        channel.getManager().setParent(category).queue(
+                                v -> {
+                                    successMsg.queue();
+                                }
+                        );
+                        break;
                     }
-                    default -> {
-                        event.reply("test").setEphemeral(false).queue();
-                    }
-                }
-            }
-        } catch (Exception e) {
-            // TODO discord embed
-            e.printStackTrace();
-        }
-    }
-    private void wipeUniversities(Guild guild) {
-        for (University university : this.universities) {
-            for (Role role : guild.getRoles()) {
-                if (role.getAsMention().equals(university.getRole().getAsMention())) {
-                    role.delete().queue();
                 }
             }
         }
