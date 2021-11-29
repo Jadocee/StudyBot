@@ -25,7 +25,7 @@ import static jAcee12.wipbot.Bot.hasRole;
 import static net.dv8tion.jda.api.interactions.commands.OptionType.INTEGER;
 import static net.dv8tion.jda.api.interactions.commands.OptionType.STRING;
 
-public class ImportCourses implements BotCommand {
+public class ImportCourses extends BotCommand {
     private final CommandData commandData;
     private final University university;
 
@@ -66,12 +66,10 @@ public class ImportCourses implements BotCommand {
                 );
     }
 
-    @Override
     public CommandData getCommandData() {
         return this.commandData;
     }
 
-    @Override
     public void run(SlashCommandEvent event) {
         var url = Objects.requireNonNull(event.getOption("url")).getAsString();
         String sem;

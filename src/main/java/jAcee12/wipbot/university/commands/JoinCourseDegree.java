@@ -13,7 +13,7 @@ import java.util.Objects;
 
 import static net.dv8tion.jda.api.interactions.commands.OptionType.ROLE;
 
-public class JoinCourseDegree implements BotCommand {
+public class JoinCourseDegree extends BotCommand {
     private final University university;
     private final CommandData commandData;
 
@@ -47,12 +47,10 @@ public class JoinCourseDegree implements BotCommand {
                 );
     }
 
-    @Override
     public CommandData getCommandData() {
         return this.commandData;
     }
 
-    @Override
     public void run(SlashCommandEvent slashCommandEvent) {
         try {
             if (Objects.equals(slashCommandEvent.getSubcommandName(), "course")) {

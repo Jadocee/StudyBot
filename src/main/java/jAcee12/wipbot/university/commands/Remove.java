@@ -12,7 +12,7 @@ import java.util.Objects;
 
 import static net.dv8tion.jda.api.interactions.commands.OptionType.ROLE;
 
-public class Remove implements BotCommand {
+public class Remove extends BotCommand {
     private final University university;
     private final CommandData commandData;
 
@@ -31,12 +31,10 @@ public class Remove implements BotCommand {
                 );
     }
 
-    @Override
     public CommandData getCommandData() {
         return this.commandData;
     }
 
-    @Override
     public void run(SlashCommandEvent slashCommandEvent) {
         switch (Objects.requireNonNull(slashCommandEvent.getSubcommandName())) {
             case "course" -> {

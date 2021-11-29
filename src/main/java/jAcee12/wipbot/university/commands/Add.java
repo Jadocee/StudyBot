@@ -15,7 +15,7 @@ import java.util.Objects;
 import static net.dv8tion.jda.api.interactions.commands.OptionType.INTEGER;
 import static net.dv8tion.jda.api.interactions.commands.OptionType.STRING;
 
-public class Add implements BotCommand {
+public class Add extends BotCommand {
     private final University university;
     private final CommandData commandData;
 
@@ -37,12 +37,10 @@ public class Add implements BotCommand {
                 );
     }
 
-    @Override
     public CommandData getCommandData() {
-        return this.commandData;
+        return commandData;
     }
 
-    @Override
     public void run(SlashCommandEvent slashCommandEvent) {
         switch (Objects.requireNonNull(slashCommandEvent.getSubcommandName())) {
             case "course" -> {

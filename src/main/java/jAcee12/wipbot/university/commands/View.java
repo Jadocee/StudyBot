@@ -12,7 +12,7 @@ import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
 import java.awt.*;
 import java.util.Objects;
 
-public class View implements BotCommand {
+public class View extends BotCommand {
     private final University university;
     private final CommandData commandData;
 
@@ -26,12 +26,10 @@ public class View implements BotCommand {
                 );
     }
 
-    @Override
     public CommandData getCommandData() {
         return this.commandData;
     }
 
-    @Override
     public void run(SlashCommandEvent slashCommandEvent) {
         switch (Objects.requireNonNull(slashCommandEvent.getSubcommandName())) {
             case "courses" -> {
