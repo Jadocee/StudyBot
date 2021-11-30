@@ -2,8 +2,10 @@ package jAcee12.wipbot.university.commands;
 
 import com.jagrosh.jdautilities.command.SlashCommand;
 import jAcee12.wipbot.Bot;
+import jAcee12.wipbot.GuildManagement;
 import jAcee12.wipbot.configuration.BotCommand;
 import jAcee12.wipbot.university.University;
+import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Category;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.entities.TextChannel;
@@ -11,6 +13,7 @@ import net.dv8tion.jda.api.events.interaction.SlashCommandEvent;
 import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.commands.build.CommandData;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
+import net.dv8tion.jda.api.requests.RestAction;
 import org.jetbrains.annotations.NotNull;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -18,10 +21,18 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.IOException;
+import java.security.Permissions;
 import java.time.Year;
+import java.util.LinkedList;
 import java.util.Objects;
+import java.util.Queue;
+import java.util.Vector;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
-import static jAcee12.wipbot.Bot.hasRole;
+import static jAcee12.wipbot.GuildManagement.*;
+import static jAcee12.wipbot.RoleManagement.hasRole;
+import static net.dv8tion.jda.api.Permission.ADMINISTRATOR;
 import static net.dv8tion.jda.api.interactions.commands.OptionType.INTEGER;
 import static net.dv8tion.jda.api.interactions.commands.OptionType.STRING;
 
@@ -66,10 +77,12 @@ public class ImportCourses extends BotCommand {
                 );
     }
 
+    @Override
     public CommandData getCommandData() {
         return this.commandData;
     }
 
+    @Override
     public void run(SlashCommandEvent event) {
         var url = Objects.requireNonNull(event.getOption("url")).getAsString();
         String sem;
@@ -102,6 +115,11 @@ public class ImportCourses extends BotCommand {
         // Get core courses
         Elements coreCourses = doc.select("div#section-core-courses-required tr:has(td.course-code)");
 
+        ThreadGroup importCourses = new ThreadGroup("Import Courses");
+        Queue<Thread> threads = new LinkedList<>();
+
+        CountDownLatch startSignal = new CountDownLatch(1);
+
         for (Element el : coreCourses) {
 
             courseCode = el.select("td.course-code").text();
@@ -117,36 +135,82 @@ public class ImportCourses extends BotCommand {
                         System.out.println("o");
 
 
-                        if (hasRole(Objects.requireNonNull(event.getGuild()), courseCode)) {
+                        if (event.getGuild().getRolesByName(courseCode, false).isEmpty()) {
                             System.out.println("Role doesn't exist. Creating new role.");
 
                             //addCourse(courseName, courseCode, null);
 
-                            final String finalCourseCode = courseCode;
-                            final String finalCourseName = courseName;
+                            String finalCourseCode = courseCode;
+                            String finalCourseName = courseName;
 
-                            new Thread(() -> {
-                                Objects.requireNonNull(event.getGuild()).createRole()
-                                        .setName(finalCourseCode)
-                                        .setMentionable(true)
-                                        .queue(role -> {
-                                            this.university.addCourse(finalCourseName, finalCourseCode, role.getIdLong());  // Save course with role
+                            threads.add(
+                                    new Thread(importCourses, () -> {
+                                    var createRole = Objects.requireNonNull(event.getGuild()).createRole()
+                                            .setName(finalCourseCode)
+                                            .setMentionable(true);
 
+                                    var channels = event.getGuild().getTextChannelsByName(finalCourseCode, true);
+                                    var categories = event.getGuild().getCategoriesByName(finalCourseCode.substring(0, 4), true);
 
-                                        });
-                            }).start();
-
+                                    if (categories.isEmpty() && channels.isEmpty()) {
+                                        createRole
+                                                .flatMap(role -> {
+                                                    this.university.addCourse(finalCourseName, finalCourseCode, role.getIdLong());
+                                                    return event.getGuild().createCategory(finalCourseCode.substring(0, 4));
+                                                })
+                                                .flatMap((category) -> event.getGuild().createTextChannel(finalCourseCode, category))
+                                                .queue(channel -> {
+                                                    this.university.getCourseByName(finalCourseCode.substring(0, 4), finalCourseName)
+                                                            .setTextChannel(channel.getIdLong());
+                                                });
+                                    } else if (categories.isEmpty()) {
+                                        createRole
+                                                .flatMap(role -> {
+                                                    this.university.addCourse(finalCourseName, finalCourseCode, role.getIdLong());
+                                                    return event.getGuild().createCategory(finalCourseCode.substring(0, 4));
+                                                })
+                                                .flatMap(category -> {
+                                                    this.university.getCourseByName(finalCourseCode.substring(0, 4), finalCourseName)
+                                                            .setTextChannel(channels.get(0).getIdLong());
+                                                    return channels.get(0).getManager().setParent(category);
+                                                })
+                                                .queue();
+                                    } else if (channels.isEmpty()) {
+                                        createRole
+                                                .flatMap(role -> {
+                                                    this.university.addCourse(finalCourseName, finalCourseCode, role.getIdLong());
+                                                    return categories.get(0).createTextChannel(finalCourseCode);
+                                                })
+                                                .queue(channel -> {
+                                                    this.university.getCourseByName(finalCourseCode.substring(0, 4), finalCourseName)
+                                                            .setTextChannel(channel.getIdLong());
+                                                });
+                                    }
+                                    })
+                            );
                         } else {
-                            for (Role role : event.getGuild().getRoles()) {
-                                if (role.getName().equals(courseCode)) {
-                                    //this.university.im(event, courseName, courseCode, role);
-                                }
-                                // TODO else
-                            }
+                            // TODO else
                         }
                     }
 
                 }
+            }
+        }
+        while (!threads.isEmpty()) {
+            Thread curr = threads.remove();
+            System.out.println("\n" + curr.getName() + "\n");
+            curr.start();
+            if (!threads.isEmpty()) {
+                try {
+                    curr.join();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
     }

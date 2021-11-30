@@ -1,5 +1,6 @@
-package jAcee12.wipbot;
+package jAcee12.wipbot.moderation;
 
+import net.dv8tion.jda.api.Permission;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import okhttp3.EventListener;
@@ -14,6 +15,9 @@ import java.util.HashMap;
 public class Moderation extends ListenerAdapter {
 
     private final HashMap<Long, LinkedList<String>> permissions = new HashMap<>();
+    private final HashMap<Long, LinkedList<Permission>> channelPerms = new HashMap<>();
+
+
 
     public void newPerms(Long roleId) throws Exception {
         if (this.permissions.containsKey(roleId)) {

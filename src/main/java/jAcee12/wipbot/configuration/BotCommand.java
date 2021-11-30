@@ -9,7 +9,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 
-public abstract class BotCommand{
+public abstract class BotCommand {
 
     public abstract CommandData getCommandData();
 

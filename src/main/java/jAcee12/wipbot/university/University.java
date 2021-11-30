@@ -1,37 +1,20 @@
 package jAcee12.wipbot.university;
 
-import jAcee12.wipbot.Bot;
-import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.interaction.SlashCommandEvent;
-import net.dv8tion.jda.api.events.role.RoleCreateEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import net.dv8tion.jda.api.interactions.commands.Command;
-import net.dv8tion.jda.api.interactions.commands.build.CommandData;
-import net.dv8tion.jda.api.interactions.commands.build.OptionData;
-import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
-import okhttp3.EventListener;
 import org.jetbrains.annotations.NotNull;
-import org.jsoup.Jsoup;
-import org.jsoup.nodes.Document;
-import org.jsoup.nodes.Element;
-import org.jsoup.select.Elements;
 
-import javax.management.relation.RoleList;
-import java.awt.*;
 import java.time.Year;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-import static net.dv8tion.jda.api.interactions.commands.OptionType.*;
-
-public class University extends ListenerAdapter {
+public class University {
 
     private final String name;
     private final String acronym;
-    private final HashMap<String, Vector<Course>> courses = new HashMap<String, Vector<Course>>();
+    private final HashMap<CourseType, Vector<Course>> courses = new HashMap<CourseType, Vector<Course>>();
     private final HashMap<Year, Vector<Semester>> semesters = new HashMap<Year, Vector<Semester>>();
     private final Vector<Degree> degrees = new Vector<Degree>();
     private final Vector<Course> newCourses = new Vector<>();
@@ -68,6 +51,18 @@ public class University extends ListenerAdapter {
         return false;
     }
 
+    public Course getCourseByName(String courseCategory, String name) {
+        if (!this.courses.get(courseCategory).isEmpty()) {
+            for (Course course : this.courses.get(courseCategory)) {
+                if (course.getName().equals(name)) {
+                    return course;
+                }
+            }
+        }
+
+        return null;
+    }
+
     public boolean isCourse(Role role) {
         String k = role.getName().substring(0, role.getName().length() / 2);
         if (this.courses.containsKey(k)) {
@@ -101,7 +96,11 @@ public class University extends ListenerAdapter {
         }
     }
 
-    public Set<String> getKeys() {
+    public HashMap<CourseType, Vector<Course>> getCourses() {
+        return courses;
+    }
+
+    public Set<CourseType> getCourseTypes() {
         return this.courses.keySet();
     }
 
@@ -113,25 +112,64 @@ public class University extends ListenerAdapter {
         return this.degrees;
     }
 
-    public void addCourse(@NotNull Course course) {
-        String type = course.getCode().substring(course.getCode().length() / 2);
-        for (String k : this.courses.keySet()) {
-            if (k.equals(type)) {
-                this.courses.get(k).add(course);
-                return;
-            }
-        }
-        this.courses.put(type, new Vector<Course>());
-        this.courses.get(type).add(course);
-    }
+    public Course addAndGetCourse(String name, @NotNull String code, Long roleId) {
+        String type = code.substring(0, 4);
 
-    public Vector<Course> getCourseCategory(String key) {
-        return this.courses.get(key);
+        this.courses.forEach((k, v) -> {
+            if (k.getName().equals(type) && !v.isEmpty()) {
+                v.forEach(course -> {
+                    if (course.getName().equals(name) && course.getCode().equals(code)) {
+                        try {
+                            throw new Exception("The course \"" + course.getName() + "\" already exists.");
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }
+                });
+            }
+        });
+
+
+        if (this.courses.containsKey(type)) {
+            if (!this.courses.get(type).isEmpty()) {
+                for (Course course : this.courses.get(type)) {
+                    if (course.getName().equals(name) && course.getCode().equals(code)) {
+                        try {
+                            throw new Exception("The course \"" + course.getName() + "\" already exists.");
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            return null;
+                        }
+                    }
+                }
+            }
+        } else {
+            this.courses.put(type, new Vector<Course>());
+        }
+
+        Course newCourse = new Course(name, code, roleId);
+        this.courses.get(type).add(newCourse);
+        return newCourse;
     }
 
     public void addCourse(String name, @NotNull String code, Long roleId) {
-        System.out.println(1);
-        String type = code.substring(0, code.length() / 2);
+        String type = code.substring(0, 4);
+
+        this.courses.forEach((k, v) -> {
+            if (k.getName().equals(type) && !v.isEmpty()) {
+                v.forEach(course -> {
+                    if (course.getName().equals(name) && course.getCode().equals(code)) {
+                        try {
+                            throw new Exception("The course \"" + course.getName() + "\" already exists.");
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            return;
+                        }
+                    }
+                });
+            }
+        });
+
 
         if (this.courses.containsKey(type)) {
             if (!this.courses.get(type).isEmpty()) {
@@ -152,10 +190,48 @@ public class University extends ListenerAdapter {
 
         Course newCourse = new Course(name, code, roleId);
         this.courses.get(type).add(newCourse);
+    }
 
-        if (newCourse.getRole() == null) {
-            this.newCourses.addElement(newCourse);
+    public void removeAllCourses(SlashCommandEvent event) {
+        this.courses.forEach((k, v) -> {
+            v.forEach(course -> {
+                var toDel = event.getGuild().getTextChannelById(course.getTextChannelId());
+                var remove = toDel.delete()
+                        .flatMap(s -> event.getGuild().getRoleById(course.getRole()).delete());
+                if (toDel.getParent().getChannels().size() <= 1) {
+                    var par = toDel.getParent();
+                    remove = remove.flatMap(s -> par.delete());
+                }
+                remove.queue();
+                /*new Thread(() -> {
+
+                }).start();*/
+            });
+            //this.courses.remove(k);
+        });
+    }
+
+    public void addCourse(String name, @NotNull String code, Long roleId, Long textChannelId) {
+        String type = code.substring(0, code.length() / 2);
+
+        if (this.courses.containsKey(type)) {
+            if (!this.courses.get(type).isEmpty()) {
+                for (Course course : this.courses.get(type)) {
+                    if (course.getName().equals(name) && course.getCode().equals(code)) {
+                        try {
+                            throw new Exception("The course \"" + course.getName() + "\" already exists.");
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                            return;
+                        }
+                    }
+                }
+            }
+        } else {
+            this.courses.put(type, new Vector<Course>());
         }
+
+        this.courses.get(type).add(new Course(name, code, roleId, textChannelId));
     }
 
     public void addCourses(SlashCommandEvent event, Vector<ArrayList<Object>> newRoles) throws Exception {
@@ -456,7 +532,7 @@ public class University extends ListenerAdapter {
                                 eb.setColor(Color.BLUE);
                                 eb.setDescription("List of all the available courses to join.");
                                 eb.addBlankField(false);
-                                for (String k : this.getKeys()) {
+                                for (String k : this.getCourseTypes()) {
                                     for (Course item : this.getCourseCategory(k)) {
                                         eb.addField(item.getName(), event.getGuild().getRoleById(item.getRole()).getAsMention(), false);
                                         eb.addBlankField(false);

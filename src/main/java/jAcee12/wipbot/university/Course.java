@@ -16,9 +16,20 @@ public class Course {
         this.roleId = roleId;
     }
 
+    Course(String name, String code, Long roleId, Long textChannelId) {
+        this.code = code;
+        this.name = name;
+        this.roleId = roleId;
+        this.textChannelId = textChannelId;
+    }
+
     Course (String name, String code) {
         this.code = code;
         this.name = name;
+    }
+
+    public Long getTextChannelId() {
+        return textChannelId;
     }
 
     public void setTextChannel(Long chId) {

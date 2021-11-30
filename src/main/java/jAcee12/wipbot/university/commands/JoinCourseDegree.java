@@ -47,10 +47,12 @@ public class JoinCourseDegree extends BotCommand {
                 );
     }
 
+    @Override
     public CommandData getCommandData() {
         return this.commandData;
     }
 
+    @Override
     public void run(SlashCommandEvent slashCommandEvent) {
         try {
             if (Objects.equals(slashCommandEvent.getSubcommandName(), "course")) {

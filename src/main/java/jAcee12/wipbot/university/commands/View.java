@@ -26,10 +26,12 @@ public class View extends BotCommand {
                 );
     }
 
+    @Override
     public CommandData getCommandData() {
         return this.commandData;
     }
 
+    @Override
     public void run(SlashCommandEvent slashCommandEvent) {
         switch (Objects.requireNonNull(slashCommandEvent.getSubcommandName())) {
             case "courses" -> {
@@ -47,12 +49,19 @@ public class View extends BotCommand {
         eb.setColor(Color.BLUE);
         eb.setDescription("There are " + this.university.numOfCourses() + " courses available for you to join.");
         eb.addBlankField(false);
-        for (String k : this.university.getKeys()) {
+        this.university.getCourses().forEach((k, v) -> {
+            v.forEach(item -> {
+                eb.addField(item.getName(), event.getGuild().getRoleById(item.getRole()).getAsMention(), false);
+                eb.addBlankField(false);
+            });
+        });
+
+        /*for (String k : this.university.getCourseTypes()) {
             for (Course item : this.university.getCourseCategory(k)) {
                 eb.addField(item.getName(), event.getGuild().getRoleById(item.getRole()).getAsMention(), false);
                 eb.addBlankField(false);
             }
-        }
+        }*/
         eb.setFooter("You can join one or more of these courses by using the slash command: " +
                 "/join course");
         event.replyEmbeds(eb.build())

@@ -1,6 +1,7 @@
 package jAcee12.wipbot.university.commands;
 
 import jAcee12.wipbot.configuration.BotCommand;
+import jAcee12.wipbot.university.Course;
 import jAcee12.wipbot.university.University;
 import net.dv8tion.jda.api.entities.Role;
 import net.dv8tion.jda.api.events.interaction.SlashCommandEvent;
@@ -27,14 +28,17 @@ public class Remove extends BotCommand {
                         new SubcommandData("degree", "Remove a degree")
                                 .addOptions(
                                         new OptionData(ROLE, "degree", "Mention the role of the degree", true)
-                                )
+                                ),
+                        new SubcommandData("all", "Remove all")
                 );
     }
 
+    @Override
     public CommandData getCommandData() {
         return this.commandData;
     }
 
+    @Override
     public void run(SlashCommandEvent slashCommandEvent) {
         switch (Objects.requireNonNull(slashCommandEvent.getSubcommandName())) {
             case "course" -> {
@@ -47,7 +51,14 @@ public class Remove extends BotCommand {
             case "degree" -> {
                 removeDegree(slashCommandEvent);
             }
+            case "all" -> {
+                removeAll(slashCommandEvent);
+            }
         }
+    }
+
+    private void removeAll(SlashCommandEvent event) {
+        this.university.removeAllCourses(event);
     }
 
     private void removeCourse(SlashCommandEvent event) throws Exception {

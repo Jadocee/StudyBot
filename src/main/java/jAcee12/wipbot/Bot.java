@@ -22,6 +22,8 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
+import static jAcee12.wipbot.GuildManagement.*;
+
 public class Bot extends ListenerAdapter {
     private final University university;
     private JDA jda;
@@ -81,63 +83,12 @@ public class Bot extends ListenerAdapter {
         );
     }
 
-    public static boolean containsCategory(Guild guild, String catName) {
-        for (Category category : guild.getCategories()) {
-            if (category.getName().equals(catName)) {
-                return true;
-            }
-        }
-        return false;
-    }
 
-    public static Category findCategory(Guild guild, String catName) {
-        for (Category category : guild.getCategories()) {
-            if (category.getName().equals(catName)) {
-                return category;
-            }
-        }
-        return null;
-    }
 
-    public static TextChannel findTextChannel(Guild guild, String chName) {
-        for (TextChannel channel : guild.getTextChannels()) {
-            if (channel.getName().equalsIgnoreCase(chName)) {
-                return channel;
-            }
-        }
-        return null;
-    }
 
-    public static TextChannel createTextChannel(Guild guild, String channelName) {
-        AtomicBoolean done = new AtomicBoolean(false);
-        AtomicReference<TextChannel> newChannel = new AtomicReference<>();
-        guild.createTextChannel(channelName).queue(channel -> {
-            done.set(true);
-            newChannel.set(channel);
-        });
-        while (!done.get()) {
-            continue;
-        }
-        return newChannel.get();
-    }
 
-    public static boolean hasRole(Guild guild, String rName) {
-        for (Role role : guild.getRoles()) {
-            if (role.getName().equalsIgnoreCase(rName)) {
-                return true;
-            }
-        }
-        return false;
-    }
 
-    private void giveRole(SlashCommandEvent event, Role role) {
-        Objects.requireNonNull(event.getGuild()).addRoleToMember(Objects.requireNonNull(event.getMember()), role)
-                .queue(v -> {
-                    event.reply("done")
-                            .setEphemeral(true)
-                            .queue();
-                });
-    }
+
 
     public static String capitalise(String[] string) {
         StringBuilder stringBuilder = new StringBuilder();
@@ -155,18 +106,7 @@ public class Bot extends ListenerAdapter {
 
 
 
-    public static Category createCategory(Guild guild, String catName) {
-        AtomicBoolean done = new AtomicBoolean(false);
-        AtomicReference<Category> newCategory = new AtomicReference<>();
-        guild.createCategory(catName).queue(category -> {
-            done.set(true);
-            newCategory.set(category);
-        });
-        while (!done.get()) {
-            continue;
-        }
-        return newCategory.get();
-    }
+
 
     private void addCourse(@NotNull SlashCommandEvent event, String name, String code, Long roleId) throws Exception {
         //this.moderation.newPerms(roleId);
@@ -209,7 +149,7 @@ public class Bot extends ListenerAdapter {
         } else {
             Category category = findCategory(event.getGuild(), code);
 
-            if (findTextChannel(Objects.requireNonNull(event.getGuild()), code) == null) {
+            if (findTextChannel(code, Objects.requireNonNull(event.getGuild())) == null) {
                 event.getGuild().createTextChannel(code)
                         .setParent(category)
                         .queue(
