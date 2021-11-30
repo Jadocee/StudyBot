@@ -1,6 +1,6 @@
 # StudyBot (Work in progress)
 
-The goal for this bot is to provide assistance while learning online at the University of Newcastle.
+The goal for this bot is to provide assistance while learning online at the University of Newcastle using [JDA](https://github.com/DV8FromTheWorld/JDA).
 
 ## Usage
 
