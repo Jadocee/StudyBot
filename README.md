@@ -1,6 +1,7 @@
 # StudyBot (Work in progress)
 
 I started this project to learn more about Java.
+
 The goal for this bot is to provide assistance while learning online at the University of Newcastle using [JDA](https://github.com/DV8FromTheWorld/JDA).
 
 ## Usage
