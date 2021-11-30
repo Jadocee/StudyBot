@@ -1,16 +1,20 @@
-# StudynStuff
+# StudyBot (Work in progress)
 
-## TODO
+The goal for this bot is to provide assistance with my own and others while learning online at the University of Newcastle.
 
-### Slash Commands
-- [x] Implement slash commands
+## Usage
 
-### University
+### Importing A Program Handbook
 
-- [ ] Add a university to the bot
-- [ ] Join a university (grants role on select)
-- [ ] Grade calculator
-- [ ] Add a degree to a university
-- [ ] Add a course and semester to a degree
-- [x] Associate university with a degree in a HashMap.
-- [ ] Export universities as JSON object.
+Using the slash command `/import` followed by the absolute URL to the program handbook for a course; every course is created as 
+a mentionable role and text channel.
+
+#### Required Parameters
+
+URL: absolute URL to the program handbook
+
+#### Optional Parameters
+
+Semester: can be either "Semester 1" or "Semester 2", default is both semesters.
+
+Year: can be either the current year or the next year, default is current year.
