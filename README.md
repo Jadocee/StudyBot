@@ -1,6 +1,6 @@
 # StudyBot (Work in progress)
 
-The goal for this bot is to provide assistance with my own and others while learning online at the University of Newcastle.
+The goal for this bot is to provide assistance while learning online at the University of Newcastle.
 
 ## Usage
 
