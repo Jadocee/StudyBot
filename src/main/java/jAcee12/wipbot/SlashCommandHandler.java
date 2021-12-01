@@ -5,6 +5,7 @@ import jAcee12.wipbot.university.University;
 import jAcee12.wipbot.university.commands.*;
 import net.dv8tion.jda.api.entities.Guild;
 import net.dv8tion.jda.api.events.ReadyEvent;
+import net.dv8tion.jda.api.events.channel.text.TextChannelCreateEvent;
 import net.dv8tion.jda.api.events.interaction.SlashCommandEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.build.CommandData;
@@ -21,6 +22,7 @@ import java.util.stream.Collectors;
 public class SlashCommandHandler extends ListenerAdapter {
     private final HashMap<String, BotCommand> commandDataList;
     private final HashMap<String, ArrayList<CommandPrivilege>> commandPrivileges;
+    private final ThreadGroup commandProcesses = new ThreadGroup("Command Processes");
 
 
     public SlashCommandHandler() {
@@ -44,11 +46,10 @@ public class SlashCommandHandler extends ListenerAdapter {
 
     }
 
-
     @Override
     public void onSlashCommand(@NotNull SlashCommandEvent event) {
         if (event.isFromGuild()) {
-            new Thread(() -> {
+            new Thread(commandProcesses, () -> {
                 this.commandDataList.get(event.getName()).run(event);
             }).start();
         }
@@ -78,5 +79,17 @@ public class SlashCommandHandler extends ListenerAdapter {
                 }).start();
             });
         }
+    }
+
+    public static String capitalise(String[] string) {
+        StringBuilder stringBuilder = new StringBuilder();
+        for (String word : string) {
+            stringBuilder
+                    .append(Character.toUpperCase(word.charAt(0)))
+                    .append(word.substring(1))
+                    .append(" ");
+        }
+        stringBuilder.trimToSize();
+        return stringBuilder.toString();
     }
 }

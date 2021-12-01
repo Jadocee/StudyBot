@@ -90,17 +90,7 @@ public class Bot extends ListenerAdapter {
 
 
 
-    public static String capitalise(String[] string) {
-        StringBuilder stringBuilder = new StringBuilder();
-        for (String word : string) {
-            stringBuilder
-                    .append(Character.toUpperCase(word.charAt(0)))
-                    .append(word.substring(1))
-                    .append(" ");
-        }
-        stringBuilder.trimToSize();
-        return stringBuilder.toString();
-    }
+
 
 
 

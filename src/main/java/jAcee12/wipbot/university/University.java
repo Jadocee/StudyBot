@@ -3,6 +3,7 @@ package jAcee12.wipbot.university;
 import net.dv8tion.jda.api.entities.*;
 import net.dv8tion.jda.api.events.interaction.SlashCommandEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import okhttp3.EventListener;
 import org.jetbrains.annotations.NotNull;
 
 import java.time.Year;
@@ -10,7 +11,7 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
-public class University {
+public class University extends EventListener {
 
     private final String name;
     private final String acronym;
@@ -24,6 +25,12 @@ public class University {
         this.name = name;
         this.acronym = acronym;
     }
+
+    public Vector<Course> getNewCourses() {
+        return newCourses;
+    }
+
+
 
     public void removeCourse(Role toDel) {
         String k = toDel.getName().substring(0, toDel.getName().length() / 2);
@@ -112,53 +119,70 @@ public class University {
         return this.degrees;
     }
 
-    public Course addAndGetCourse(String name, @NotNull String code, Long roleId) {
-        String type = code.substring(0, 4);
+    /*public Course addAndGetCourse(Long catId, String courseName, String courseCode, Long roleId) {
+        CourseType courseType = new CourseType(courseCode.substring(0, 4), catId);
+        Course newCourse = new Course(courseName, courseCode, roleId);
 
-        this.courses.forEach((k, v) -> {
-            if (k.getName().equals(type) && !v.isEmpty()) {
-                v.forEach(course -> {
-                    if (course.getName().equals(name) && course.getCode().equals(code)) {
-                        try {
-                            throw new Exception("The course \"" + course.getName() + "\" already exists.");
-                        } catch (Exception e) {
-                            e.printStackTrace();
+        if (this.courses.containsKey(courseType)) {
+
+            this.courses.forEach((cType, cList) -> {
+                if (cType.equals(courseType) && !cList.isEmpty()) {
+                    cList.forEach(course -> {
+                        if (course.getName().equals(courseName) && course.getCode().equals(courseCode)) {
+                            try {
+                                throw new Exception("The course \"" + course.getName() + "\" already exists.");
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
                         }
-                    }
-                });
-            }
-        });
-
-
-        if (this.courses.containsKey(type)) {
-            if (!this.courses.get(type).isEmpty()) {
-                for (Course course : this.courses.get(type)) {
-                    if (course.getName().equals(name) && course.getCode().equals(code)) {
-                        try {
-                            throw new Exception("The course \"" + course.getName() + "\" already exists.");
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            return null;
-                        }
-                    }
+                    });
                 }
-            }
+            });
+
         } else {
-            this.courses.put(type, new Vector<Course>());
+
+            this.courses.put(courseType, new Vector<Course>());
+
         }
 
-        Course newCourse = new Course(name, code, roleId);
-        this.courses.get(type).add(newCourse);
-        return newCourse;
-    }
+        this.courses.get(courseType).addElement(newCourse);
+        return this.courses.get(courseType).get(this.courses.get(courseType).indexOf(newCourse));
+    }*/
+    public void addCourse(Long catId, String courseName, String courseCode, Long roleId, Long chId) {
+        CourseType courseType = new CourseType(courseCode.substring(0, 4), catId);
+        //String courseType = courseCode.substring(0, 4);
+        Course newCourse = new Course(courseName, courseCode, roleId, chId);
 
-    public void addCourse(String name, @NotNull String code, Long roleId) {
-        String type = code.substring(0, 4);
+        if (this.courses.containsKey(courseType)) {
 
-        this.courses.forEach((k, v) -> {
-            if (k.getName().equals(type) && !v.isEmpty()) {
+            this.courses.forEach((cType, cList) -> {
+                if (cType.equals(courseType) && !cList.isEmpty()) {
+                    cList.forEach(course -> {
+                        if (course.getName().equals(courseName) && course.getCode().equals(courseCode)) {
+                            try {
+                                throw new Exception("The course \"" + course.getName() + "\" already exists.");
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
+                    });
+                }
+            });
+
+        } else {
+
+            this.courses.put(courseType, new Vector<Course>());
+
+        }
+
+        this.courses.get(courseType).addElement(newCourse);
+
+
+
+
+        /*    if (k.getName().equals(courseType) && !v.isEmpty()) {
                 v.forEach(course -> {
-                    if (course.getName().equals(name) && course.getCode().equals(code)) {
+                    if (course.getName().equals(courseName) && course.getCode().equals(courseCode)) {
                         try {
                             throw new Exception("The course \"" + course.getName() + "\" already exists.");
                         } catch (Exception e) {
@@ -168,11 +192,11 @@ public class University {
                     }
                 });
             }
-        });
+        });*/
 
 
-        if (this.courses.containsKey(type)) {
-            if (!this.courses.get(type).isEmpty()) {
+        /*if (this.courses.containsKey(courseType)) {
+            if (!this.courses.get(courseType).isEmpty()) {
                 for (Course course : this.courses.get(type)) {
                     if (course.getName().equals(name) && course.getCode().equals(code)) {
                         try {
@@ -186,10 +210,10 @@ public class University {
             }
         } else {
             this.courses.put(type, new Vector<Course>());
-        }
+        }*/
 
-        Course newCourse = new Course(name, code, roleId);
-        this.courses.get(type).add(newCourse);
+        //Course newCourse = new Course(name, code, roleId);
+        //this.courses.get(type).add(newCourse);
     }
 
     public void removeAllCourses(SlashCommandEvent event) {
@@ -211,7 +235,7 @@ public class University {
         });
     }
 
-    public void addCourse(String name, @NotNull String code, Long roleId, Long textChannelId) {
+  /*  public void addCourse(String name, @NotNull String code, Long roleId, Long textChannelId) {
         String type = code.substring(0, code.length() / 2);
 
         if (this.courses.containsKey(type)) {
@@ -232,9 +256,9 @@ public class University {
         }
 
         this.courses.get(type).add(new Course(name, code, roleId, textChannelId));
-    }
+    }*/
 
-    public void addCourses(SlashCommandEvent event, Vector<ArrayList<Object>> newRoles) throws Exception {
+    /*public void addCourses(SlashCommandEvent event, Vector<ArrayList<Object>> newRoles) throws Exception {
         System.out.println(newRoles.size());
         if (newRoles.isEmpty()) {
             throw new Exception("List is empty");
@@ -249,8 +273,8 @@ public class University {
                     Long roleId = Long.getLong(newRole.get(2).toString());
                     String key = cCode.substring(0, cCode.length() / 2);
 
-                    /*String roleName2 = event.getGuild().getRoleById(roleId).getName();
-                    String key2 = roleName.substring(0, roleName.length()/2);*/
+                    *//*String roleName2 = event.getGuild().getRoleById(roleId).getName();
+                    String key2 = roleName.substring(0, roleName.length()/2);*//*
 
                     System.out.println("Looking for key \"" + key + "\"");
 
@@ -270,18 +294,18 @@ public class University {
                                 new Course(cName, cCode, roleId)
                         );
 
-                        /*Role role = event.getGuild().getRoleById(roleId);
-                        this.courses.get(key).add(new Course(role.getName(),));*/
+                        *//*Role role = event.getGuild().getRoleById(roleId);
+                        this.courses.get(key).add(new Course(role.getName(),));*//*
                     }
 
-                    /*this.courses.get(key).forEach(course -> {
+                    *//*this.courses.get(key).forEach(course -> {
                         if (course.getRole().equals(roleId)) {
 
                         }
-                    });*/
+                    });*//*
                 }
         );
-    }
+    }*/
 
     public void addDegree(@NotNull Degree degree) {
 

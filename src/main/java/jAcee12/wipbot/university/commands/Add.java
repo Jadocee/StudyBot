@@ -1,6 +1,7 @@
 package jAcee12.wipbot.university.commands;
 
 import jAcee12.wipbot.Bot;
+import jAcee12.wipbot.SlashCommandHandler;
 import jAcee12.wipbot.configuration.BotCommand;
 import jAcee12.wipbot.university.Course;
 import jAcee12.wipbot.university.University;
@@ -11,7 +12,10 @@ import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import net.dv8tion.jda.api.interactions.commands.build.SubcommandData;
 
 import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static jAcee12.wipbot.RoleManagement.hasRole;
 import static net.dv8tion.jda.api.interactions.commands.OptionType.INTEGER;
@@ -57,13 +61,80 @@ public class Add extends BotCommand {
     }
 
     private void addCourse(SlashCommandEvent event) {
+        String courseCode = event.getOption("code").getAsString().toUpperCase();
+        String courseName = SlashCommandHandler.capitalise(event.getOption("name").getAsString().split(" "));
+
+
+        if (event.getGuild().getRolesByName(courseCode, false).isEmpty()) {
+            System.out.println("Role doesn't exist. Creating new role.");
+
+            String finalCourseCode = courseCode;
+            String finalCourseName = courseName;
+
+            AtomicLong newRoleId = new AtomicLong();
+            AtomicLong newCatId = new AtomicLong();
+            AtomicLong newChId = new AtomicLong();
+
+
+            var createRole = event.getGuild().createRole().setName(finalCourseCode)
+                    .setMentionable(true);
+
+            var channels = event.getGuild().getTextChannelsByName(finalCourseCode, true);
+            var categories = event.getGuild().getCategoriesByName(finalCourseCode.substring(0, 4), true);
+
+            if (categories.isEmpty() && channels.isEmpty()) {
+
+                createRole.flatMap(role -> {
+                            newRoleId.set(role.getIdLong());
+                            return event.getGuild().createCategory(finalCourseCode.substring(0, 4));
+                        })
+                        .flatMap((category) -> {
+                            newCatId.set(category.getIdLong());
+                            return event.getGuild().createTextChannel(finalCourseCode, category);
+                        }).complete();
+
+            } else if (categories.isEmpty()) {
+
+                createRole.flatMap(role -> {
+                    newRoleId.set(role.getIdLong());
+                    return event.getGuild().createCategory(finalCourseCode.substring(0, 4));
+                }).flatMap(category -> {
+                    newCatId.set(category.getIdLong());
+                    long channel = event.getGuild().getTextChannelsByName(finalCourseCode, true)
+                            .get(0).getIdLong();
+                    newChId.set(channel);
+                    return event.getGuild().getTextChannelById(channel).getManager().setParent(category);
+                }).complete();
+
+            } else if (channels.isEmpty()) {
+
+                createRole.flatMap(role -> {
+                    newRoleId.set(role.getIdLong());
+                    long category = event.getGuild().getCategoriesByName(finalCourseCode.substring(0, 4), true)
+                            .get(0).getIdLong();
+                    newCatId.set(category);
+                    return event.getGuild().createTextChannel(finalCourseCode, event.getGuild().getCategoryById(category));
+                }).complete();
+            }
+
+            this.university.addCourse(newCatId.get(), courseName, courseCode, newRoleId.get(), newChId.get());
+            event.reply("done").setEphemeral(true).queueAfter(5, TimeUnit.SECONDS);
+
+        }
+
+        /*
         String code = Objects.requireNonNull(event.getOption("code")).getAsString().toUpperCase();
-        String name = Bot.capitalise(Objects.requireNonNull(event.getOption("name")).getAsString().split(" "));
+        String name = SlashCommandHandler.capitalise(event.getOption("name").getAsString().split(" "));
 
         if (!hasRole(Objects.requireNonNull(event.getGuild()), code)) {
             Objects.requireNonNull(event.getGuild()).createRole()
                     .setName(code)
                     .setMentionable(true)
+                    .flatMap(role -> )
+
+
+
+
                     .flatMap(role -> {
                         return event.getGuild().createCategory(code.substring(0, 4));
                     })
@@ -85,7 +156,7 @@ public class Add extends BotCommand {
                 }
                 // TODO else
             }
-        }
+        }*/
     }
 
     private void addDegree(SlashCommandEvent event) {

@@ -29,6 +29,8 @@ import java.util.Queue;
 import java.util.Vector;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 
 import static jAcee12.wipbot.GuildManagement.*;
 import static jAcee12.wipbot.RoleManagement.hasRole;
@@ -143,51 +145,78 @@ public class ImportCourses extends BotCommand {
                             String finalCourseCode = courseCode;
                             String finalCourseName = courseName;
 
-                            threads.add(
-                                    new Thread(importCourses, () -> {
-                                    var createRole = Objects.requireNonNull(event.getGuild()).createRole()
-                                            .setName(finalCourseCode)
-                                            .setMentionable(true);
+                            AtomicLong newRoleId = new AtomicLong();
+                            AtomicLong newCatId = new AtomicLong();
+                            AtomicLong newChId = new AtomicLong();
 
-                                    var channels = event.getGuild().getTextChannelsByName(finalCourseCode, true);
-                                    var categories = event.getGuild().getCategoriesByName(finalCourseCode.substring(0, 4), true);
 
-                                    if (categories.isEmpty() && channels.isEmpty()) {
-                                        createRole
-                                                .flatMap(role -> {
-                                                    this.university.addCourse(finalCourseName, finalCourseCode, role.getIdLong());
-                                                    return event.getGuild().createCategory(finalCourseCode.substring(0, 4));
-                                                })
-                                                .flatMap((category) -> event.getGuild().createTextChannel(finalCourseCode, category))
-                                                .queue(channel -> {
-                                                    this.university.getCourseByName(finalCourseCode.substring(0, 4), finalCourseName)
-                                                            .setTextChannel(channel.getIdLong());
-                                                });
-                                    } else if (categories.isEmpty()) {
-                                        createRole
-                                                .flatMap(role -> {
-                                                    this.university.addCourse(finalCourseName, finalCourseCode, role.getIdLong());
-                                                    return event.getGuild().createCategory(finalCourseCode.substring(0, 4));
-                                                })
-                                                .flatMap(category -> {
-                                                    this.university.getCourseByName(finalCourseCode.substring(0, 4), finalCourseName)
-                                                            .setTextChannel(channels.get(0).getIdLong());
-                                                    return channels.get(0).getManager().setParent(category);
-                                                })
-                                                .queue();
-                                    } else if (channels.isEmpty()) {
-                                        createRole
-                                                .flatMap(role -> {
-                                                    this.university.addCourse(finalCourseName, finalCourseCode, role.getIdLong());
-                                                    return categories.get(0).createTextChannel(finalCourseCode);
-                                                })
-                                                .queue(channel -> {
-                                                    this.university.getCourseByName(finalCourseCode.substring(0, 4), finalCourseName)
-                                                            .setTextChannel(channel.getIdLong());
-                                                });
-                                    }
-                                    })
-                            );
+
+                            var createRole = event.getGuild().createRole().setName(finalCourseCode)
+                                    .setMentionable(true);
+
+                            var channels = event.getGuild().getTextChannelsByName(finalCourseCode, true);
+                            var categories = event.getGuild().getCategoriesByName(finalCourseCode.substring(0, 4), true);
+
+                            if (categories.isEmpty() && channels.isEmpty()) {
+
+                                createRole.flatMap(role -> {
+                                            newRoleId.set(role.getIdLong());
+                                            return event.getGuild().createCategory(finalCourseCode.substring(0, 4));
+                                        })
+                                        .flatMap((category) -> {
+                                            newCatId.set(category.getIdLong());
+                                            return event.getGuild().createTextChannel(finalCourseCode, category);
+                                        }).complete();
+
+                            } else if (categories.isEmpty()) {
+
+                                createRole.flatMap(role -> {
+                                    newRoleId.set(role.getIdLong());
+                                    return event.getGuild().createCategory(finalCourseCode.substring(0, 4));
+                                }).flatMap(category -> {
+                                    newCatId.set(category.getIdLong());
+                                    long channel = event.getGuild().getTextChannelsByName(finalCourseCode, true)
+                                            .get(0).getIdLong();
+                                    newChId.set(channel);
+                                    return event.getGuild().getTextChannelById(channel).getManager().setParent(category);
+                                }).complete();
+
+                                /*createRole
+                                        .flatMap(role -> {
+                                            this.university.addCourse(finalCourseName, finalCourseCode, role.getIdLong());
+                                            return event.getGuild().createCategory(finalCourseCode.substring(0, 4));
+                                        })
+                                        .flatMap(category -> {
+                                            this.university.getCourseByName(finalCourseCode.substring(0, 4), finalCourseName)
+                                                    .setTextChannel(channels.get(0).getIdLong());
+                                            return channels.get(0).getManager().setParent(category);
+                                        })
+                                        .queue();*/
+                            } else if (channels.isEmpty()) {
+
+                                createRole.flatMap(role -> {
+                                    newRoleId.set(role.getIdLong());
+                                    long category = event.getGuild().getCategoriesByName(finalCourseCode.substring(0, 4), true)
+                                            .get(0).getIdLong();
+                                    newCatId.set(category);
+                                    return event.getGuild().createTextChannel(finalCourseCode, event.getGuild().getCategoryById(category));
+                                }).complete();
+
+
+                               /* createRole
+                                        .flatMap(role -> {
+                                            this.university.addCourse(finalCourseName, finalCourseCode, role.getIdLong());
+                                            return categories.get(0).createTextChannel(finalCourseCode);
+                                        })
+                                        .queue(channel -> {
+                                            this.university.getCourseByName(finalCourseCode.substring(0, 4), finalCourseName)
+                                                    .setTextChannel(channel.getIdLong());
+                                        });*/
+                            }
+
+                            this.university.addCourse(newCatId.get(), courseName, courseCode, newRoleId.get(), newChId.get());
+
+
                         } else {
                             // TODO else
                         }
@@ -196,7 +225,7 @@ public class ImportCourses extends BotCommand {
                 }
             }
         }
-        while (!threads.isEmpty()) {
+        /*while (!threads.isEmpty()) {
             Thread curr = threads.remove();
             System.out.println("\n" + curr.getName() + "\n");
             curr.start();
@@ -212,6 +241,6 @@ public class ImportCourses extends BotCommand {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-        }
+        }*/
     }
 }
